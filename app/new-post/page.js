@@ -1,46 +1,53 @@
+import PostForm from '@/components/post-form';
+import { uploadImage } from '@/lib/cloudinary';
 import { storePost } from '@/lib/posts';
+import { redirect } from 'next/navigation';
 
 export default function NewPostPage() {
-  async function createPost(formData) {
-    "use server";
-    const title = formData.get('title');
-    const image = formData.get('image');
-    const content = formData.get('content');
+ 
+   
+async function createPost(prevState,formData) {
 
-    storePost({
-      imageUrl: '',
-      title,
-      content,
+  // https://www.udemy.com/course/nextjs-react-the-complete-guide/learn/lecture/43356962#overview
+
+  // we can copy this code in differnet cmponent and use server
+    "use server";
+    const data= {
+      title: formData.get('title'),
+      imageUrl : formData.get('image'),
+      content : formData.get('content'),
       userId: 1
-    })
+    }
+   
+    let errors= [];
+
+    if (!data.title || data.title.trim().length ===0 ){
+      errors.push("Title is required")
+    }
+
+    if (!data.content || data.content.trim().length ===0 ){
+      errors.push("Content is required")
+    }
+
+    if (!data.imageUrl || data.imageUrl.size === 0){
+      errors.push("Image is required")
+    }
+
+    if (errors.length > 0) {
+      return { errors }
+    }
+    let imageUrl;
+    try {
+      
+      imageUrl =  await uploadImage(data.imageUrl);
+    } catch (error) {
+      throw new Error('Image Upload Error')
+    }
+    data.imageUrl = imageUrl;
+    await storePost(data);
+    redirect('/feed');
   }
 
-  return (
-    <>
-      <h1>Create a new post</h1>
-      <form action={createPost}>
-        <p className="form-control">
-          <label htmlFor="title">Title</label>
-          <input type="text" id="title" name="title" />
-        </p>
-        <p className="form-control">
-          <label htmlFor="image">Image URL</label>
-          <input
-            type="file"
-            accept="image/png, image/jpeg"
-            id="image"
-            name="image"
-          />
-        </p>
-        <p className="form-control">
-          <label htmlFor="content">Content</label>
-          <textarea id="content" name="content" rows="5" />
-        </p>
-        <p className="form-actions">
-          <button type="reset">Reset</button>
-          <button>Create Post</button>
-        </p>
-      </form>
-    </>
-  );
+  return <PostForm action={createPost}/> 
+  
 }
